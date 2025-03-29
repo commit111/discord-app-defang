@@ -17,6 +17,22 @@ function createCommandChoices() {
   return commandChoices;
 }
 
+const ASK_COMMAND = {
+  name: 'ask',
+  description: 'Ask a question to Ask Defang!',
+  options: [
+    {
+      name: 'question',
+      description: 'The question you want to ask',
+      type: 3, // STRING type
+      required: true,
+    },
+  ],
+  type: 1,
+  integration_types: [0, 1],
+  contexts: [0, 1],
+}
+
 // Simple test command
 const TEST_COMMAND = {
   name: 'test',
@@ -44,6 +60,6 @@ const CHALLENGE_COMMAND = {
   contexts: [0, 2],
 };
 
-const ALL_COMMANDS = [TEST_COMMAND, CHALLENGE_COMMAND];
+const ALL_COMMANDS = [ASK_COMMAND, TEST_COMMAND, CHALLENGE_COMMAND];
 
 InstallGlobalCommands(process.env.APP_ID, ALL_COMMANDS);

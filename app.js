@@ -40,6 +40,52 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
   if (type === InteractionType.APPLICATION_COMMAND) {
     const { name } = data;
 
+    if (name === 'ask') {
+      const context = req.body.context;
+      const userId = context === 0 ? req.body.member.user.id : req.body.user.id
+      
+      const question = data.options[0]?.value || 'No question provided';
+      return res.send({
+        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+        data: {
+          content: `You asked:\n\n"${question}"\n\nDoes this look correct?`,
+          // Indicates it'll be an ephemeral message
+          flags: InteractionResponseFlags.EPHEMERAL,
+          components: [
+        // {
+        //   type: MessageComponentTypes.ACTION_ROW,
+        //   components: [
+        //     {
+        //   type: MessageComponentTypes.STRING_SELECT,
+        //   custom_id: `confirm_question_${userId}`,
+        //   options: [
+        //     { label: 'Yes, proceed', value: 'yes' },
+        //     { label: 'No, I want to edit', value: 'no' },
+        //   ],
+        //     },
+        //   ],
+        // },
+        {
+          type: MessageComponentTypes.ACTION_ROW,
+          components: [
+            {
+              type: MessageComponentTypes.BUTTON,
+              custom_id: `continue_question_${userId}`,
+              label: 'Yes',
+              style: ButtonStyleTypes.PRIMARY,
+            },
+            {
+              type: MessageComponentTypes.BUTTON,
+              custom_id: `cancel_question_${userId}`,
+              label: 'Cancel',
+              style: ButtonStyleTypes.SECONDARY,
+            },
+          ],
+        },
+          ],
+        },
+      });
+  }
     // "test" command
     if (name === 'test') {
       // Send a message into the channel where command was triggered from
@@ -95,6 +141,97 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
     // custom_id set in payload when sending message component
     const componentId = data.custom_id;
   
+    // if (componentId.startsWith('confirm_question_')) {
+    //   const selectedValue = data.values[0];
+
+    //   if (selectedValue === 'yes') {
+    //     return res.send({
+    //       type: InteractionResponseType.UPDATE_MESSAGE,
+    //       data: {
+    //         content: 'Great! Proceeding with your question...',
+    //         flags: InteractionResponseFlags.EPHEMERAL,
+    //         components: [], // Clear the dropdown by setting components to an empty array
+    //       },
+    //     });
+    //   } else if (selectedValue === 'no') {
+    //     return res.send({
+    //       type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+    //       data: {
+    //     content: 'No problem! Please edit your question and try again.',
+    //     flags: InteractionResponseFlags.EPHEMERAL,
+    //       },
+    //     });
+    //   } else {
+    //     console.error('Unexpected value for confirm_question:', selectedValue);
+    //     return res.status(400).json({ error: 'Unexpected value for confirm_question' });
+    //   }
+    // }
+
+    if (componentId.startsWith('continue_question_')) {
+      const userId = componentId.replace('continue_question_', '');
+      const question = req.body.message.content.split('\n\n')[1].replace(/"/g, '').trim();
+
+      // dummy answer
+      return res.send({
+        type: InteractionResponseType.UPDATE_MESSAGE,
+        data: {
+        content: `Thank you for confirming, <@${userId}>! Here is the answer to your question:\n\n"${question}"`,
+        flags: InteractionResponseFlags.EPHEMERAL,
+        components: [], // Clear the buttons
+        },
+      });
+
+      // // Call to API
+      // try {
+      // // Call an external API to answer the question
+      // const apiResponse = await fetch('https://api.example.com/answer', {
+      //   method: 'POST',
+      //   headers: {
+      //   'Content-Type': 'application/json',
+      //   },
+      //   body: JSON.stringify({ question }),
+      // });
+
+      // if (!apiResponse.ok) {
+      //   throw new Error('Failed to fetch answer from API');
+      // }
+
+      // const { answer } = await apiResponse.json();
+
+      // return res.send({
+      //   type: InteractionResponseType.UPDATE_MESSAGE,
+      //   data: {
+      //   content: `Thank you for confirming, <@${userId}>! Here is the answer to your question:\n\n"${question}"`,
+      //   flags: InteractionResponseFlags.EPHEMERAL,
+      //   components: [], // Clear the buttons
+      //   },
+      // });
+      // } catch (error) {
+      // console.error('Error fetching answer:', error);
+      // return res.send({
+      //   type: InteractionResponseType.UPDATE_MESSAGE,
+      //   data: {
+      //   content: `Sorry, <@${userId}>, I couldn't fetch an answer to your question. Please try again later.`,
+      //   flags: InteractionResponseFlags.EPHEMERAL,
+      //   components: [], // Clear the buttons
+      //   },
+      // });
+      // }
+    // }
+    }
+
+    if (componentId.startsWith('cancel_question_')) {
+      const userId = componentId.replace('cancel_question_', '');
+      return res.send({
+        type: InteractionResponseType.UPDATE_MESSAGE,
+        data: {
+          content: `Your question has been canceled, <@${userId}>.`,
+          flags: InteractionResponseFlags.EPHEMERAL,
+          components: [], // Clear the buttons
+        },
+      });
+    }
+
     if (componentId.startsWith('accept_button_')) {
       // get the associated game ID
       const gameId = componentId.replace('accept_button_', '');
