@@ -184,8 +184,14 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
       // Call to API
       try {
       // Call an external API to answer the question
-      const apiResponse = await fetch('https://dummyjson.com/quotes/random', {
-        method: 'GET',
+      const apiResponse = await fetch('https://api.funtranslations.com/translate/chef.json', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          text: question,
+        }),
       });
     
       if (!apiResponse.ok) {
@@ -193,7 +199,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
       }
 
       const data = await apiResponse.json();
-      const answer = `${data.quote} - ${data.author}`;
+      const answer = `${data.contents.translated}`;
 
       return res.send({
         type: InteractionResponseType.UPDATE_MESSAGE,
