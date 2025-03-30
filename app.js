@@ -171,33 +171,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
       const userId = componentId.replace('continue_question_', '');
       const question = req.body.message.content.split('\n\n')[1].replace(/"/g, '').trim();
 
-      // dummy answer
-      return res.send({
-        type: InteractionResponseType.UPDATE_MESSAGE,
-        data: {
-        content: `Thank you for confirming, <@${userId}>! Here is the answer to your question:\n\n"${question}"`,
-        flags: InteractionResponseFlags.EPHEMERAL,
-        components: [], // Clear the buttons
-        },
-      });
-
-      // // Call to API
-      // try {
-      // // Call an external API to answer the question
-      // const apiResponse = await fetch('https://api.example.com/answer', {
-      //   method: 'POST',
-      //   headers: {
-      //   'Content-Type': 'application/json',
-      //   },
-      //   body: JSON.stringify({ question }),
-      // });
-
-      // if (!apiResponse.ok) {
-      //   throw new Error('Failed to fetch answer from API');
-      // }
-
-      // const { answer } = await apiResponse.json();
-
+      // // Dummy answer
       // return res.send({
       //   type: InteractionResponseType.UPDATE_MESSAGE,
       //   data: {
@@ -206,19 +180,42 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
       //   components: [], // Clear the buttons
       //   },
       // });
-      // } catch (error) {
-      // console.error('Error fetching answer:', error);
-      // return res.send({
-      //   type: InteractionResponseType.UPDATE_MESSAGE,
-      //   data: {
-      //   content: `Sorry, <@${userId}>, I couldn't fetch an answer to your question. Please try again later.`,
-      //   flags: InteractionResponseFlags.EPHEMERAL,
-      //   components: [], // Clear the buttons
-      //   },
-      // });
-      // }
-    // }
+
+      // Call to API
+      try {
+      // Call an external API to answer the question
+      const apiResponse = await fetch('https://dummyjson.com/quotes/random', {
+        method: 'GET',
+      });
+    
+      if (!apiResponse.ok) {
+        throw new Error(`API error! Status: ${apiResponse.status}`);
+      }
+
+      const data = await apiResponse.json();
+      const answer = `${data.quote} - ${data.author}`;
+
+      return res.send({
+        type: InteractionResponseType.UPDATE_MESSAGE,
+        data: {
+        content: `Here is the answer to your question, <@${userId}>:\n\n"${answer}"`,
+        flags: InteractionResponseFlags.EPHEMERAL,
+        components: [], // Clear the buttons
+        },
+      });
+      } catch (error) {
+      console.error('Error fetching answer:', error);
+      return res.send({
+        type: InteractionResponseType.UPDATE_MESSAGE,
+        data: {
+        content: `Sorry, <@${userId}>, I couldn't fetch an answer to your question. Please try again later.`,
+        flags: InteractionResponseFlags.EPHEMERAL,
+        components: [], // Clear the buttons
+        },
+      });
+      }
     }
+    
 
     if (componentId.startsWith('cancel_question_')) {
       const userId = componentId.replace('cancel_question_', '');
