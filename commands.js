@@ -36,7 +36,7 @@ const ASK_COMMAND = {
 // Simple test command
 const TEST_COMMAND = {
   name: 'test',
-  description: 'Basic command',
+  description: 'Displays Defang\'s official slogan with a random emoji.',
   type: 1,
   integration_types: [0, 1],
   contexts: [0, 1, 2],
