@@ -19,7 +19,7 @@ function createCommandChoices() {
 
 const ASK_COMMAND = {
   name: 'ask',
-  description: 'Ask a question to Ask Defang!',
+  description: 'Ask a question to the bot!',
   options: [
     {
       name: 'question',

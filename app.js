@@ -89,6 +89,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
   if (type === InteractionType.APPLICATION_COMMAND) {
     const { name } = data;
 
+    // "ask command"
     if (name === 'ask') {
       const context = req.body.context;
       const userId = context === 0 ? req.body.member.user.id : req.body.user.id
