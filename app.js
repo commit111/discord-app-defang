@@ -18,6 +18,55 @@ const PORT = process.env.PORT || 3000;
 // To keep track of our active games
 const activeGames = {};
 
+
+// Helper functions below
+
+async function sendPlaceholderResponse(res, placeholderResponse) {
+  await res.send({
+    type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
+    data: {
+      content: placeholderResponse,
+      flags: InteractionResponseFlags.EPHEMERAL,
+      components: [], 
+    },
+  });
+}
+
+async function fetchAnswer(question) {
+  const response = await fetch('https://ask.defang.io/v1/ask', {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${process.env.ASK_TOKEN}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ query: question }),
+  });
+
+  const rawResponse = await response.text();
+  console.log('Raw API response:', rawResponse);
+
+  if (!response.ok) {
+    throw new Error(`API error! Status: ${response.status}`);
+  }
+
+  return rawResponse || 'No answer provided.';
+}
+
+async function sendFollowUpResponse(endpoint, content) {
+  await fetch(`https://discord.com/api/v10/${endpoint}`, {
+    method: 'PATCH',
+    headers: {
+      'Authorization': `Bot ${process.env.BOT_TOKEN}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      content,
+      flags: InteractionResponseFlags.EPHEMERAL,
+      components: [],
+    }),
+  });
+}
+
 /**
  * Interactions endpoint URL where Discord will send HTTP requests
  * Parse request body and verifies incoming requests using discord-interactions package
@@ -45,34 +94,42 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
       const userId = context === 0 ? req.body.member.user.id : req.body.user.id
       
       const question = data.options[0]?.value || 'No question provided';
-      return res.send({
-        type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-        data: {
-          content: `You asked: \n> ${question}\n\nDoes this look correct?`,
-          // Indicates it'll be an ephemeral message
-          flags: InteractionResponseFlags.EPHEMERAL,
-          components: [
-        {
-          type: MessageComponentTypes.ACTION_ROW,
-          components: [
-            {
-              type: MessageComponentTypes.BUTTON,
-              custom_id: `continue_question_${userId}`,
-              label: 'Yes',
-              style: ButtonStyleTypes.PRIMARY,
-            },
-            {
-              type: MessageComponentTypes.BUTTON,
-              custom_id: `cancel_question_${userId}`,
-              label: 'Cancel',
-              style: ButtonStyleTypes.SECONDARY,
-            },
-          ],
-        },
-          ],
-        },
-      });
+      const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`;
+      const initialMessage = `\n> ${question}\n\nLet me find the answer for you. This might take a moment`
+
+      // Send a placeholder response
+      await sendPlaceholderResponse(res, initialMessage);
+
+      // Show animated dots in the message while waiting
+      let dotCount = 0;
+      const maxDots = 4;
+      let isFetching = true;
+
+      const interval = setInterval(() => {
+        if (isFetching) {
+          dotCount = (dotCount % maxDots) + 1;
+          sendFollowUpResponse(endpoint, `${initialMessage}${'.'.repeat(dotCount)}`);
+        }
+      }, 500);
+
+      // Create the follow-up response
+      let followUpMessage;
+      try {
+        // Call an external API to fetch the answer
+        const answer = await fetchAnswer(question);
+        followUpMessage = `\n> ${question}\n\nHere's what I found, <@${userId}>:\n\n${answer}`;
+      } catch (error) {
+        console.error('Error fetching answer:', error);
+        followUpMessage = `\n> ${question}\n\nSorry <@${userId}>, I couldn't fetch an answer to your question. Please try again later.`;
+      } finally {
+        // Ensure cleanup and state updates
+        isFetching = false; // Mark fetching as complete
+        clearInterval(interval); // Stop the dot interval
+      }
+
+      return sendFollowUpResponse(endpoint, followUpMessage);
   }
+  
     // "test" command
     if (name === 'test') {
       // Send a message into the channel where command was triggered from
@@ -127,90 +184,6 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
   if (type === InteractionType.MESSAGE_COMPONENT) {
     // custom_id set in payload when sending message component
     const componentId = data.custom_id;
-
-    if (componentId.startsWith('continue_question_')) {
-      const userId = componentId.replace('continue_question_', '');
-      // Trim question from the content string
-      const question = req.body.message.content.split('\n')[1].replace(/^>\s*/, '').trim();
-
-      // Send an immediate placeholder response
-      await res.send({
-        type: InteractionResponseType.UPDATE_MESSAGE,
-        data: {
-          content: `\n> ${question}\n\nLet me find the answer for you. This might take a moment...`,
-          flags: InteractionResponseFlags.EPHEMERAL,
-          components: [], // Clear the buttons
-        },
-      });
-
-      try {
-        // Call an external API to answer the question
-        const apiResponse = await fetch('https://ask.defang.io/v1/ask', {
-          method: 'POST',
-          headers: {
-            'Authorization': 'Bearer ' + process.env.ASK_TOKEN,
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify({
-            query: question,
-          }),
-        });
-          // Log the raw response for debugging
-        const rawResponse = await apiResponse.text();
-        console.log('Raw API response:', rawResponse);
-      
-        if (!apiResponse.ok) {
-          throw new Error(`API error! Status: ${apiResponse.status}`);
-        }
-
-        const answer = rawResponse || 'No answer provided.';
-
-        // Follow-up API call to update the message
-        const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`;
-        await fetch(`https://discord.com/api/v10/${endpoint}`, {
-          method: 'PATCH',
-          headers: {
-            'Authorization': `Bot ${process.env.BOT_TOKEN}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            content: `\n> ${question}\n\nHere's what I found, <@${userId}>:\n\n${answer}`,
-            flags: InteractionResponseFlags.EPHEMERAL,
-            components: [],
-          }),
-        });
-      } catch (error) {
-        console.error('Error fetching answer:', error);
-
-        // Follow-up API call to send an error message
-        const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`;
-        await fetch(`https://discord.com/api/v10/${endpoint}`, {
-          method: 'PATCH',
-          headers: {
-            'Authorization': `Bot ${process.env.BOT_TOKEN}`,
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            content: `\n> ${question}\n\n Sorry <@${userId}>, I couldn't fetch an answer to your question. Please try again later.`,
-            flags: InteractionResponseFlags.EPHEMERAL,
-            components: [],
-          }),
-        });
-      } 
-    }
-    
-
-    if (componentId.startsWith('cancel_question_')) {
-      const userId = componentId.replace('cancel_question_', '');
-      return res.send({
-        type: InteractionResponseType.UPDATE_MESSAGE,
-        data: {
-          content: `Your question has been canceled, <@${userId}>.`,
-          flags: InteractionResponseFlags.EPHEMERAL,
-          components: [],
-        },
-      });
-    }
 
     if (componentId.startsWith('accept_button_')) {
       // get the associated game ID
