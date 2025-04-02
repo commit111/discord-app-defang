@@ -133,7 +133,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
       // Trim question from the content string
       const question = req.body.message.content.split('\n')[1].replace(/^>\s*/, '').trim();
 
-      // Send a deferred response immediately
+      // Send an immediate placeholder response
       await res.send({
         type: InteractionResponseType.UPDATE_MESSAGE,
         data: {
