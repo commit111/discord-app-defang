@@ -48,23 +48,10 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
       return res.send({
         type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
         data: {
-          content: `You asked:\n\n"${question}"\n\nDoes this look correct?`,
+          content: `You asked: \n> ${question}\n\nDoes this look correct?`,
           // Indicates it'll be an ephemeral message
           flags: InteractionResponseFlags.EPHEMERAL,
           components: [
-        // {
-        //   type: MessageComponentTypes.ACTION_ROW,
-        //   components: [
-        //     {
-        //   type: MessageComponentTypes.STRING_SELECT,
-        //   custom_id: `confirm_question_${userId}`,
-        //   options: [
-        //     { label: 'Yes, proceed', value: 'yes' },
-        //     { label: 'No, I want to edit', value: 'no' },
-        //   ],
-        //     },
-        //   ],
-        // },
         {
           type: MessageComponentTypes.ACTION_ROW,
           components: [
@@ -140,86 +127,76 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
   if (type === InteractionType.MESSAGE_COMPONENT) {
     // custom_id set in payload when sending message component
     const componentId = data.custom_id;
-  
-    // if (componentId.startsWith('confirm_question_')) {
-    //   const selectedValue = data.values[0];
-
-    //   if (selectedValue === 'yes') {
-    //     return res.send({
-    //       type: InteractionResponseType.UPDATE_MESSAGE,
-    //       data: {
-    //         content: 'Great! Proceeding with your question...',
-    //         flags: InteractionResponseFlags.EPHEMERAL,
-    //         components: [], // Clear the dropdown by setting components to an empty array
-    //       },
-    //     });
-    //   } else if (selectedValue === 'no') {
-    //     return res.send({
-    //       type: InteractionResponseType.CHANNEL_MESSAGE_WITH_SOURCE,
-    //       data: {
-    //     content: 'No problem! Please edit your question and try again.',
-    //     flags: InteractionResponseFlags.EPHEMERAL,
-    //       },
-    //     });
-    //   } else {
-    //     console.error('Unexpected value for confirm_question:', selectedValue);
-    //     return res.status(400).json({ error: 'Unexpected value for confirm_question' });
-    //   }
-    // }
 
     if (componentId.startsWith('continue_question_')) {
       const userId = componentId.replace('continue_question_', '');
-      const question = req.body.message.content.split('\n\n')[1].replace(/"/g, '').trim();
+      // Trim question from the content string
+      const question = req.body.message.content.split('\n')[1].replace(/^>\s*/, '').trim();
 
-      // // Dummy answer
-      // return res.send({
-      //   type: InteractionResponseType.UPDATE_MESSAGE,
-      //   data: {
-      //   content: `Thank you for confirming, <@${userId}>! Here is the answer to your question:\n\n"${question}"`,
-      //   flags: InteractionResponseFlags.EPHEMERAL,
-      //   components: [], // Clear the buttons
-      //   },
-      // });
+      // Send a deferred response immediately
+      await res.send({
+        type: InteractionResponseType.UPDATE_MESSAGE,
+        data: {
+          content: `\n> ${question}\n\nLet me find the answer for you. This might take a moment...`,
+          flags: InteractionResponseFlags.EPHEMERAL,
+          components: [], // Clear the buttons
+        },
+      });
 
-      // Call to API
       try {
-      // Call an external API to answer the question
-      const apiResponse = await fetch('https://api.funtranslations.com/translate/chef.json', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          text: question,
-        }),
-      });
-    
-      if (!apiResponse.ok) {
-        throw new Error(`API error! Status: ${apiResponse.status}`);
-      }
+        // Call an external API to answer the question
+        const apiResponse = await fetch('https://ask.defang.io/v1/ask', {
+          method: 'POST',
+          headers: {
+            'Authorization': 'Bearer ' + process.env.ASK_TOKEN,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            query: question,
+          }),
+        });
+          // Log the raw response for debugging
+        const rawResponse = await apiResponse.text();
+        console.log('Raw API response:', rawResponse);
+      
+        if (!apiResponse.ok) {
+          throw new Error(`API error! Status: ${apiResponse.status}`);
+        }
 
-      const data = await apiResponse.json();
-      const answer = `${data.contents.translated}`;
+        const answer = rawResponse || 'No answer provided.';
 
-      return res.send({
-        type: InteractionResponseType.UPDATE_MESSAGE,
-        data: {
-        content: `Here is the answer to your question, <@${userId}>:\n\n"${answer}"`,
-        flags: InteractionResponseFlags.EPHEMERAL,
-        components: [], // Clear the buttons
-        },
-      });
+        // Follow-up API call to update the message
+        const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`;
+        await fetch(`https://discord.com/api/v10/${endpoint}`, {
+          method: 'PATCH',
+          headers: {
+            'Authorization': `Bot ${process.env.BOT_TOKEN}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            content: `\n> ${question}\n\nHere's what I found, <@${userId}>:\n\n${answer}`,
+            flags: InteractionResponseFlags.EPHEMERAL,
+            components: [],
+          }),
+        });
       } catch (error) {
-      console.error('Error fetching answer:', error);
-      return res.send({
-        type: InteractionResponseType.UPDATE_MESSAGE,
-        data: {
-        content: `Sorry, <@${userId}>, I couldn't fetch an answer to your question. Please try again later.`,
-        flags: InteractionResponseFlags.EPHEMERAL,
-        components: [], // Clear the buttons
-        },
-      });
-      }
+        console.error('Error fetching answer:', error);
+
+        // Follow-up API call to send an error message
+        const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`;
+        await fetch(`https://discord.com/api/v10/${endpoint}`, {
+          method: 'PATCH',
+          headers: {
+            'Authorization': `Bot ${process.env.BOT_TOKEN}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            content: `\n> ${question}\n\n Sorry <@${userId}>, I couldn't fetch an answer to your question. Please try again later.`,
+            flags: InteractionResponseFlags.EPHEMERAL,
+            components: [],
+          }),
+        });
+      } 
     }
     
 
@@ -230,7 +207,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
         data: {
           content: `Your question has been canceled, <@${userId}>.`,
           flags: InteractionResponseFlags.EPHEMERAL,
-          components: [], // Clear the buttons
+          components: [],
         },
       });
     }
