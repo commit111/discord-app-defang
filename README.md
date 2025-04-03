@@ -1,6 +1,6 @@
 # Discord App for Defang
 
-This project is a Discord bot developed for [Defang Software Labs](https://github.com/DefangLabs), intended to be a helpful resource in a Discord server. It is built using Discord's official app template, available at [discord-example-app](https://github.com/discord/discord-example-app).
+This is a Discord bot developed for [Defang Software Labs](https://github.com/DefangLabs), intended to be a helpful resource in a Discord server. It is built using Discord's official app template, available at [discord-example-app](https://github.com/discord/discord-example-app).
 
 ## Features
 
