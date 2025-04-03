@@ -6,7 +6,7 @@ This project is a Discord bot developed for [Defang Software Labs](https://githu
 
 ### Slash Commands
 
-`/ask`: The bot accesses the Ask Defang (ask.defang.io) API endpoint to power a chatbot experience on Discord.
+`/ask`: A command to ask Defang-related questions to the bot. The bot accesses the Ask Defang (ask.defang.io) API endpoint for retrieving responses.
 
 `/test`: A basic command to test functionality using the Discord API, without relying on external APIs.
 
