@@ -1,4 +1,10 @@
-import 'dotenv/config';
+import dotenv from 'dotenv';
+import path from 'path';
+
+// Load environment variables from the parent folder
+const __dirname = path.dirname(new URL(import.meta.url).pathname);
+dotenv.config({ path: path.resolve(__dirname, '../.env') });
+
 import express from 'express';
 import {
   InteractionResponseFlags,
@@ -12,6 +18,11 @@ import { getRandomEmoji } from './utils.js';
 const app = express();
 // Get port, or default to 3000
 const PORT = process.env.PORT || 3000;
+
+// Add health check endpoint
+app.get('/', (req, res) => {
+  res.status(200).send('OK');
+});
 
 // Helper functions below
 

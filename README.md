@@ -37,7 +37,7 @@ Before you start, you'll need to install [NodeJS](https://nodejs.org/en/download
 ### Install dependencies
 
 ```
-cd discord-example-app
+cd discord-bot
 npm install
 ```
 
@@ -50,6 +50,7 @@ Fetch the credentials from your app's settings and add them to a `.env` file. Yo
 The commands for the example app are set up in `commands.js`. All of the commands in the `ALL_COMMANDS` array at the bottom of `commands.js` will be installed when you run the `register` command configured in `package.json`:
 
 ```
+cd discord-bot
 npm run register
 ```
 
@@ -58,7 +59,8 @@ npm run register
 After your credentials are added, go ahead and run the app:
 
 ```
-node app.js
+cd discord-bot
+npm run start
 ```
 
 ### Set up interactivity
