@@ -9,9 +9,9 @@ services:
         target: 3000
         published: 3000
     environment:
-      APP_ID:
+      DISCORD_APP_ID:
       DISCORD_TOKEN:
-      PUBLIC_KEY:
+      DISCORD_PUBLIC_KEY:
       ASK_TOKEN:
     deploy:
       resources:

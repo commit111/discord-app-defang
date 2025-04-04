@@ -43,7 +43,7 @@ npm install
 
 ### Get app credentials
 
-Fetch the credentials from your app's settings and add them to a `.env` file. You'll need your app ID (`APP_ID`), bot token (`DISCORD_TOKEN`), and public key (`PUBLIC_KEY`).
+Fetch the credentials from your app's settings and add them to a `.env` file. You'll need your app ID (`DISCORD_APP_ID`), bot token (`DISCORD_TOKEN`), and public key (`DISCORD_PUBLIC_KEY`).
 You will also need an `ASK_TOKEN` to authenticate API calls to the Ask Defang endpoint.
 
 ### Install slash commands

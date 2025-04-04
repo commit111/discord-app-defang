@@ -61,7 +61,7 @@ async function sendFollowUpResponse(endpoint, content) {
   await fetch(`https://discord.com/api/v10/${endpoint}`, {
     method: 'PATCH',
     headers: {
-      'Authorization': `Bot ${process.env.BOT_TOKEN}`,
+      'Authorization': `Bot ${process.env.DISCORD_TOKEN}`,
       'Content-Type': 'application/json',
     },
     body: JSON.stringify({
@@ -76,7 +76,7 @@ async function sendFollowUpResponse(endpoint, content) {
  * Interactions endpoint URL where Discord will send HTTP requests
  * Parse request body and verifies incoming requests using discord-interactions package
  */
-app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async function (req, res) {
+app.post('/interactions', verifyKeyMiddleware(process.env.DISCORD_PUBLIC_KEY), async function (req, res) {
   // Interaction id, type and data
   const { id, type, data } = req.body;
 
@@ -100,7 +100,7 @@ app.post('/interactions', verifyKeyMiddleware(process.env.PUBLIC_KEY), async fun
       const userId = context === 0 ? req.body.member.user.id : req.body.user.id
       
       const question = data.options[0]?.value || 'No question provided';
-      const endpoint = `webhooks/${process.env.APP_ID}/${req.body.token}/messages/@original`;
+      const endpoint = `webhooks/${process.env.DISCORD_APP_ID}/${req.body.token}/messages/@original`;
       const initialMessage = `\n> ${question}\n\nLet me find the answer for you. This might take a moment`
 
       // Send a placeholder response
