@@ -1,4 +1,4 @@
-# Discord Bot for Defang
+# Discord App for Defang
 
 This is a Discord bot developed for [Defang Software Labs](https://github.com/DefangLabs). It provides helpful resources in a Discord server and interacts with users via slash commands. The bot is built using Discord's official [template](https://github.com/discord/discord-example-app).
 
